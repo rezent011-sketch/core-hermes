@@ -27,4 +27,7 @@ class ManifestWriter:
             "file_count": len(result.saved_files),
             "context_enhancement": result.context_enhancement is not None,
             "orchestrator_action": result.orchestrator_decision.action.value if result.orchestrator_decision else None,
+            "judge_score": result.judge_score,
+            "quality_gate_passed": result.quality_gate_passed,
         }
+

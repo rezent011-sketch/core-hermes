@@ -135,6 +135,8 @@ class ExtractionConfig(BaseModel):
     strict: bool = False
     memory_review_path: Optional[Path] = None
     unsafe_no_sanitize: bool = False
+    judge: bool = False
+    quality_threshold: float = 0.85
 
 
 class ExtractionResult(BaseModel):
@@ -148,4 +150,7 @@ class ExtractionResult(BaseModel):
     context_enhancement: Optional[ContextEnhancement] = None
     orchestrator_decision: Optional[OrchestratorDecision] = None
     exit_code: Optional[int] = None
+    judge_score: Optional[float] = None
+    quality_gate_passed: Optional[bool] = None
+
 

@@ -29,6 +29,8 @@ from .manifest import ManifestWriter
 from .safety import SafetyAuditor, SafetyAuditResult, SafetyFinding
 from .memory_review import MemoryReviewWriter
 from .risk import RiskScorer, RiskScore
+from .judge import HeuristicJudge, JudgeDecision
+from .quality_gate import QualityGate, QualityGateResult
 from .main import AutoSkillExtractor
 
 __all__ = [
@@ -63,8 +65,13 @@ __all__ = [
     "MemoryReviewWriter",
     "RiskScorer",
     "RiskScore",
+    "HeuristicJudge",
+    "JudgeDecision",
+    "QualityGate",
+    "QualityGateResult",
     "AutoSkillExtractor",
 ]
+
 
 
 

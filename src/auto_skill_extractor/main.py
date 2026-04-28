@@ -24,6 +24,8 @@ try:
     from .manifest import ManifestWriter
     from .safety import SafetyAuditor
     from .memory_review import MemoryReviewWriter
+    from .judge import HeuristicJudge
+    from .quality_gate import QualityGate
 except ImportError:
     from models import ExtractionConfig, ExtractionResult
     from session_reader import SessionReader
@@ -39,6 +41,8 @@ except ImportError:
     from manifest import ManifestWriter
     from safety import SafetyAuditor
     from memory_review import MemoryReviewWriter
+    from judge import HeuristicJudge
+    from quality_gate import QualityGate
 
 
 class AutoSkillExtractor:
@@ -60,6 +64,8 @@ class AutoSkillExtractor:
         self.manifest_writer = ManifestWriter()
         self.safety_auditor = SafetyAuditor()
         self.memory_review_writer = MemoryReviewWriter()
+        self.judge = HeuristicJudge(config.quality_threshold)
+        self.quality_gate = QualityGate(config.quality_threshold)
     
     def run(self, since: Optional[datetime] = None) -> ExtractionResult:
         """抽出処理を実行"""
@@ -140,6 +146,20 @@ class AutoSkillExtractor:
             if self.config.orchestrate:
                 result.orchestrator_decision = self.orchestrator.decide(result, self.config.output_dir, reviewed=self.config.review)
             
+            judge_decision = None
+            if self.config.judge:
+                judge_decision = self.judge.evaluate(unique_skills, memory_candidates)
+                result.judge_score = judge_decision.score
+                print(f"   Judge: {judge_decision.score:.2f} approved={judge_decision.approved}")
+
+            gate_result = None
+            if self.config.strict:
+                gate_result = self.quality_gate.check(result, judge_decision)
+                result.quality_gate_passed = gate_result.passed
+                if not gate_result.passed:
+                    result.errors.extend(gate_result.reasons)
+                    print("Quality gate failed")
+
             if memory_candidates:
                 print(f"   {len(memory_candidates)} memory candidates ready for review")
             if context_enhancement:
@@ -162,7 +182,7 @@ class AutoSkillExtractor:
                 report_path = self.reporter.write(result, self.config.report_path)
                 print(f"   Report written: {report_path}")
 
-            if self.config.strict and (result.errors or result.skills_extracted == 0):
+            if self.config.strict and (result.errors or result.skills_extracted == 0 or result.quality_gate_passed is False):
                 print("Strict mode failed")
                 result.exit_code = 2
 
@@ -234,6 +254,8 @@ def main():
     parser.add_argument("--strict", action="store_true", help="Exit 2 if no skills or any validation/safety error")
     parser.add_argument("--memory-review-out", type=Path, default=None, help="Write memory candidates to a checkbox review markdown")
     parser.add_argument("--unsafe-no-sanitize", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--judge", action="store_true", help="Run heuristic judge compatible with future LLM judge")
+    parser.add_argument("--quality-threshold", type=float, default=0.85, help="Minimum judge score for strict quality gate")
     parser.add_argument("--install-from", type=Path, default=None, help="Install .md skills from a directory and exit")
     parser.add_argument("--hermes-home", type=Path, default=Path("~/.hermes"), help="Hermes home directory")
     
@@ -261,7 +283,9 @@ def main():
         manifest_path=args.manifest,
         strict=args.strict,
         memory_review_path=args.memory_review_out,
-        unsafe_no_sanitize=args.unsafe_no_sanitize
+        unsafe_no_sanitize=args.unsafe_no_sanitize,
+        judge=args.judge,
+        quality_threshold=args.quality_threshold
     )
     
     since = None
@@ -283,6 +307,7 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
 
 
 
