@@ -15,12 +15,22 @@ try:
     from .pattern_analyzer import PatternAnalyzer
     from .skill_extractor import SkillExtractor
     from .skill_generator import SkillGenerator
+    from .quality import SkillDeduplicator, SkillValidator
+    from .installer import SkillInstaller
+    from .smart_memory import SmartMemoryExtractor
+    from .context_enhancer import ContextEnhancer
+    from .orchestrator import CoreHermesOrchestrator
 except ImportError:
     from models import ExtractionConfig, ExtractionResult
     from session_reader import SessionReader
     from pattern_analyzer import PatternAnalyzer
     from skill_extractor import SkillExtractor
     from skill_generator import SkillGenerator
+    from quality import SkillDeduplicator, SkillValidator
+    from installer import SkillInstaller
+    from smart_memory import SmartMemoryExtractor
+    from context_enhancer import ContextEnhancer
+    from orchestrator import CoreHermesOrchestrator
 
 
 class AutoSkillExtractor:
@@ -31,6 +41,11 @@ class AutoSkillExtractor:
         self.reader = SessionReader(config.db_path)
         self.extractor = SkillExtractor(config.min_confidence)
         self.generator = SkillGenerator(config.output_dir)
+        self.deduplicator = SkillDeduplicator()
+        self.validator = SkillValidator()
+        self.memory_extractor = SmartMemoryExtractor()
+        self.context_enhancer = ContextEnhancer()
+        self.orchestrator = CoreHermesOrchestrator()
     
     def run(self, since: Optional[datetime] = None) -> ExtractionResult:
         """抽出処理を実行"""
@@ -48,6 +63,7 @@ class AutoSkillExtractor:
             # 各セッションを処理
             all_skills = []
             total_messages = 0
+            all_messages = []
             
             for session in sessions:
                 session_id = session["session_id"]
@@ -57,34 +73,74 @@ class AutoSkillExtractor:
                     continue
                 
                 total_messages += len(messages)
+                all_messages.extend(messages)
                 
                 # スキルを抽出
                 skill = self.extractor.extract_from_session(messages, session_id)
                 if skill:
                     all_skills.append(skill)
             
-            # 重複除去・フィルタリング
-            unique_skills = self._deduplicate_skills(all_skills)
-            unique_skills = unique_skills[:self.config.max_skills_per_run]
-            
-            print(f"🔍 {len(unique_skills)} unique skills detected")
-            
-            # スキルを保存
-            saved_files = []
+            # 重複統合・品質検証
+            unique_skills = self.deduplicator.deduplicate(all_skills)
+            validated_skills = []
+            errors = []
             for skill in unique_skills:
-                filepath = self.generator.generate(skill, self.config.output_dir)
+                validation = self.validator.validate(skill)
+                if validation.is_valid:
+                    validated_skills.append(skill)
+                else:
+                    errors.extend([f"{skill.name}: {e}" for e in validation.errors])
+            unique_skills = validated_skills[:self.config.max_skills_per_run]
+            
+            print(f"🔍 {len(unique_skills)} quality skills detected")
+            
+            # スキルを保存（dry-run時は書き込まない）
+            saved_files = []
+            target_output = self.config.output_dir / "review" if self.config.review else self.config.output_dir
+            for skill in unique_skills:
+                if self.config.dry_run:
+                    print(f"   DRY-RUN ✓ {skill.name} ({skill.confidence:.2f})")
+                    continue
+                filepath = self.generator.generate(skill, target_output)
                 saved_files.append(str(filepath))
                 print(f"   ✓ {skill.name} ({skill.confidence:.2f})")
             
+            memory_candidates = self.memory_extractor.extract(all_messages) if self.config.memory_review else []
+            context_enhancement = None
+            if self.config.context_query:
+                context_enhancement = self.context_enhancer.enhance(
+                    self.config.context_query,
+                    memory_candidates,
+                    self.config.output_dir,
+                )
+
             result = ExtractionResult(
                 total_messages=total_messages,
                 patterns_found=len(all_skills),
                 skills_extracted=len(unique_skills),
-                saved_files=saved_files
+                saved_files=saved_files,
+                errors=errors,
+                memory_candidates=memory_candidates,
+                context_enhancement=context_enhancement,
             )
+            if self.config.orchestrate:
+                result.orchestrator_decision = self.orchestrator.decide(result, self.config.output_dir, reviewed=self.config.review)
             
+            if memory_candidates:
+                print(f"   {len(memory_candidates)} memory candidates ready for review")
+            if context_enhancement:
+                print(f"   Context: {context_enhancement.summary[:160]}")
+            if result.orchestrator_decision:
+                print(f"   Orchestrator: {result.orchestrator_decision.action} - {result.orchestrator_decision.reason}")
+
+            if self.config.install and saved_files:
+                installer = SkillInstaller()
+                installed = [installer.install_file(Path(p)) for p in saved_files]
+                saved_files.extend(str(p) for p in installed)
+                print(f"   {len(installed)} skills installed to Hermes")
+
             print(f"\n✅ Extraction complete!")
-            print(f"   {result.skills_extracted} skills saved to {self.config.output_dir}")
+            print(f"   {result.skills_extracted} skills saved to {target_output if not self.config.dry_run else 'dry-run'}")
             
             return result
     
@@ -134,14 +190,35 @@ def main():
         default=None,
         help="Extract from N days ago"
     )
+    parser.add_argument("--dry-run", action="store_true", help="Analyze only; do not write files")
+    parser.add_argument("--review", action="store_true", help="Write skills under output/review for manual review")
+    parser.add_argument("--install", action="store_true", help="Install reviewed/generated skills into ~/.hermes/skills/core-hermes")
+    parser.add_argument("--memory-review", action="store_true", help="Generate smart-memory candidates for manual review")
+    parser.add_argument("--context-query", type=str, default=None, help="Build task-specific context from memory and generated skills")
+    parser.add_argument("--orchestrate", action="store_true", help="Ask Core Hermes orchestrator for next safe action")
+    parser.add_argument("--install-from", type=Path, default=None, help="Install .md skills from a directory and exit")
+    parser.add_argument("--hermes-home", type=Path, default=Path("~/.hermes"), help="Hermes home directory")
     
     args = parser.parse_args()
+
+    if args.install_from:
+        installed = SkillInstaller(args.hermes_home).install_directory(args.install_from)
+        print(f"✅ Installed {len(installed)} skills")
+        for path in installed:
+            print(f"   ✓ {path}")
+        return 0
     
     config = ExtractionConfig(
         db_path=args.db,
         output_dir=args.output,
         min_confidence=args.min_confidence,
-        max_skills_per_run=args.max_skills
+        max_skills_per_run=args.max_skills,
+        dry_run=args.dry_run,
+        review=args.review,
+        install=args.install,
+        memory_review=args.memory_review,
+        context_query=args.context_query,
+        orchestrate=args.orchestrate
     )
     
     since = None
@@ -161,3 +238,4 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+

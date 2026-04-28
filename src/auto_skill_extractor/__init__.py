@@ -1,6 +1,6 @@
 """Core Hermes - auto-skill-extractor パッケージ"""
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 
 from .models import (
     SessionMessage,
@@ -8,11 +8,22 @@ from .models import (
     SkillType,
     ExtractionConfig,
     ExtractionResult,
+    MemoryCandidate,
+    MemoryType,
+    ContextEnhancement,
+    OrchestratorAction,
+    OrchestratorDecision,
 )
 from .session_reader import SessionReader
 from .pattern_analyzer import PatternAnalyzer
 from .skill_extractor import SkillExtractor
 from .skill_generator import SkillGenerator
+from .sanitizer import ContentSanitizer
+from .quality import SkillQualityScorer, SkillDeduplicator, SkillValidator, ValidationResult
+from .installer import SkillInstaller
+from .smart_memory import SmartMemoryExtractor
+from .context_enhancer import ContextEnhancer
+from .orchestrator import CoreHermesOrchestrator
 from .main import AutoSkillExtractor
 
 __all__ = [
@@ -21,9 +32,24 @@ __all__ = [
     "SkillType",
     "ExtractionConfig",
     "ExtractionResult",
+    "MemoryCandidate",
+    "MemoryType",
+    "ContextEnhancement",
+    "OrchestratorAction",
+    "OrchestratorDecision",
     "SessionReader",
     "PatternAnalyzer",
     "SkillExtractor",
     "SkillGenerator",
+    "ContentSanitizer",
+    "SkillQualityScorer",
+    "SkillDeduplicator",
+    "SkillValidator",
+    "ValidationResult",
+    "SkillInstaller",
+    "SmartMemoryExtractor",
+    "ContextEnhancer",
+    "CoreHermesOrchestrator",
     "AutoSkillExtractor",
 ]
+

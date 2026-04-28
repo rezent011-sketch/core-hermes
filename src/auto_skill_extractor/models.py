@@ -17,6 +17,22 @@ class SkillType(str, Enum):
     CUSTOM = "custom"
 
 
+class MemoryType(str, Enum):
+    """長期メモリ候補タイプ"""
+    USER_PREFERENCE = "user_preference"
+    ENVIRONMENT = "environment"
+    PROJECT_FACT = "project_fact"
+    WORKFLOW = "workflow"
+
+
+class OrchestratorAction(str, Enum):
+    """次に実行すべき安全な改善アクション"""
+    EXTRACT_SKILLS = "extract_skills"
+    REVIEW_MEMORIES = "review_memories"
+    ENHANCE_CONTEXT = "enhance_context"
+    IDLE = "idle"
+
+
 class SessionMessage(BaseModel):
     """セッションメッセージ"""
     id: str
@@ -25,6 +41,32 @@ class SessionMessage(BaseModel):
     timestamp: datetime
     session_id: str
     metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class MemoryCandidate(BaseModel):
+    """会話履歴から抽出した保存候補メモリ"""
+    content: str
+    memory_type: MemoryType
+    confidence: float
+    evidence_session_id: str
+    source_message_id: str
+    tags: List[str] = Field(default_factory=list)
+
+
+class ContextEnhancement(BaseModel):
+    """次セッションへ注入できる安全な文脈"""
+    summary: str
+    relevant_memories: List[MemoryCandidate] = Field(default_factory=list)
+    relevant_skills: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+
+
+class OrchestratorDecision(BaseModel):
+    """Core Hermes v2.0 オーケストレーター判断"""
+    action: OrchestratorAction
+    reason: str
+    confidence: float
+    next_steps: List[str] = Field(default_factory=list)
 
 
 class SkillDefinition(BaseModel):
@@ -82,6 +124,12 @@ class ExtractionConfig(BaseModel):
     min_confidence: float = 0.7
     max_skills_per_run: int = 10
     min_pattern_occurrence: int = 3  # 最少出現回数
+    dry_run: bool = False
+    review: bool = False
+    install: bool = False
+    memory_review: bool = False
+    context_query: Optional[str] = None
+    orchestrate: bool = False
 
 
 class ExtractionResult(BaseModel):
@@ -91,3 +139,7 @@ class ExtractionResult(BaseModel):
     skills_extracted: int
     saved_files: List[str]
     errors: List[str] = Field(default_factory=list)
+    memory_candidates: List[MemoryCandidate] = Field(default_factory=list)
+    context_enhancement: Optional[ContextEnhancement] = None
+    orchestrator_decision: Optional[OrchestratorDecision] = None
+

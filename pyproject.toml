@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "core-hermes-auto-skill-extractor"
-version = "1.0.0"
+version = "2.0.0"
 description = "Hermes Agentの自動スキル抽出システム"
 readme = "README.md"
 license = {text = "MIT"}
@@ -28,8 +28,8 @@ dependencies = [
 core-hermes-extract = "auto_skill_extractor.main:main"
 
 [project.urls]
-Homepage = "https://github.com/gagarot/core-hermes"
-Repository = "https://github.com/gagarot/core-hermes"
+Homepage = "https://github.com/rezent011-sketch/core-hermes"
+Repository = "https://github.com/rezent011-sketch/core-hermes"
 
 [tool.setuptools.packages.find]
 where = ["src"]

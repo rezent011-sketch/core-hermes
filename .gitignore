@@ -11,7 +11,10 @@ dist/
 # Test/generated data
 test_state.db*
 test_skills/
+test_skills_*/
 extracted_skills/
+core_context.json
+memory_candidates.json
 
 # OS/editor
 .DS_Store

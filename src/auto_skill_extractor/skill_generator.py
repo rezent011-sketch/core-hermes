@@ -4,13 +4,15 @@ from pathlib import Path
 from typing import Optional
 
 from .models import SkillDefinition
+from .sanitizer import ContentSanitizer
 
 
 class SkillGenerator:
     """SKILL.mdファイルを生成"""
     
-    def __init__(self, output_dir: Optional[Path] = None):
+    def __init__(self, output_dir: Optional[Path] = None, sanitizer: Optional[ContentSanitizer] = None):
         self.output_dir = Path(output_dir) if output_dir else Path("./extracted_skills")
+        self.sanitizer = sanitizer or ContentSanitizer()
     
     def generate(self, skill: SkillDefinition, output_dir: Optional[Path] = None) -> Path:
         """スキル定義からSKILL.mdを生成"""
@@ -21,8 +23,8 @@ class SkillGenerator:
         filename = self._sanitize_filename(skill.name) + ".md"
         filepath = target_dir / filename
         
-        # Markdownを生成
-        content = self._generate_markdown(skill)
+        # Markdownを生成してサニタイズ
+        content = self.sanitizer.sanitize(self._generate_markdown(skill))
         
         # 書き出し
         filepath.write_text(content, encoding="utf-8")
@@ -41,7 +43,7 @@ class SkillGenerator:
         
         # SKILL.md
         skill_md = skill_dir / "SKILL.md"
-        skill_md.write_text(self._generate_markdown(skill), encoding="utf-8")
+        skill_md.write_text(self.sanitizer.sanitize(self._generate_markdown(skill)), encoding="utf-8")
         
         return skill_dir
     

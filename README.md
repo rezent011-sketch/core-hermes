@@ -1,100 +1,82 @@
 # Core Hermes - Auto Skill Extractor
 
-Hermes Agentの会話履歴を自動分析し、再利用可能なスキルを抽出するシステム。
+Hermes Agentの `~/.hermes/state.db` を分析し、過去会話から再利用可能な `SKILL.md` 候補・メモリ候補・次回文脈を生成するCore Hermes実験実装。
 
 ## 機能
 
-- **自動パターン検出**: コード生成、デバッグ、分析などのパターンを自動認識
-- **SQLite対応**: HermesのセッションDB（`~/.hermes/state.db`）を直接読み込み
-- **SKILL.md自動生成**: skill_manage互換のMarkdownスキルファイルを出力
-- **重複除去**: 同様のスキルを自動的にマージ
+- **auto-skill-extractor**: コード生成、デバッグ、分析、検索などの会話パターンを検出
+- **安全マスク**: APIキー、トークン、Telegram ID、メールなどを出力前にマスク
+- **品質管理**: スコアリング、重複統合、SKILL.md事前検証
+- **review/install CLI**: `--dry-run` / `--review` / `--install-from` / `--install`
+- **smart-memory**: 長期記憶に保存する価値がある候補をレビュー用に抽出
+- **context-enhancer**: タスクに関連するメモリ・スキルを短い文脈に圧縮
+- **orchestrator**: 次に取るべき安全なアクションを判断
 
 ## インストール
 
 ```bash
+git clone https://github.com/rezent011-sketch/core-hermes.git
+cd core-hermes
+python3 -m venv .venv
+. .venv/bin/activate
 pip install -e .
-```
-
-または:
-
-```bash
-pip install core-hermes
 ```
 
 ## 使用方法
 
-### CLI
-
 ```bash
-# 基本的な使い方
-python -m auto_skill_extractor --db ~/.hermes/state.db
+# まずは解析だけ（ファイルを書かない）
+core-hermes-extract --db ~/.hermes/state.db --dry-run
 
-# オプション指定
-python -m auto_skill_extractor \
+# レビュー用ディレクトリに出力
+core-hermes-extract --db ~/.hermes/state.db --output ./extracted_skills --review
+
+# smart-memory / context-enhancer / orchestrator も実行
+core-hermes-extract \
   --db ~/.hermes/state.db \
-  --output ./my_skills \
-  --min-confidence 0.8 \
-  --max-skills 20
+  --output ./extracted_skills \
+  --memory-review \
+  --context-query "Hermes skills GitHub" \
+  --orchestrate
 
-# 直近7日間のみ
-python -m auto_skill_extractor --since 7
+# レビュー済みスキルをHermesへ導入
+core-hermes-extract --install-from ./extracted_skills/review --hermes-home ~/.hermes
 ```
 
-### Python API
+## 安全方針
 
-```python
-from auto_skill_extractor import AutoSkillExtractor, ExtractionConfig
-
-config = ExtractionConfig(
-    db_path="~/.hermes/state.db",
-    output_dir="./extracted_skills",
-    min_confidence=0.7
-)
-
-extractor = AutoSkillExtractor(config)
-result = extractor.run()
-
-print(f"{result.skills_extracted} skills extracted")
-```
+- 生成物は必ず人間レビュー前提
+- `--install` / `--install-from` は既存ファイルをバックアップしてから導入
+- `test_state.db` や生成済みスキルはGit管理しない
+- 秘密情報はマスクするが、公開前の目視確認は必須
 
 ## アーキテクチャ
 
+```text
+auto_skill_extractor/
+├── session_reader.py      # Hermes state.db読み込み
+├── pattern_analyzer.py    # 会話パターン検出
+├── skill_extractor.py     # スキル候補生成
+├── skill_generator.py     # SKILL.md生成 + サニタイズ
+├── quality.py             # スコアリング・重複統合・検証
+├── installer.py           # Hermes skills安全導入
+├── smart_memory.py        # メモリ候補抽出
+├── context_enhancer.py    # 関連文脈生成
+├── orchestrator.py        # 次アクション判断
+└── main.py                # CLI
 ```
-auto-skill-extractor/
-├── models.py          # Pydanticデータモデル
-├── session_reader.py  # SQLite読み込み
-├── pattern_analyzer.py # パターン検出
-├── skill_extractor.py  # スキル抽出
-├── skill_generator.py  # SKILL.md生成
-└── main.py            # CLIエントリーポイント
-```
 
-## 検出パターン
+## 検証済み
 
-| パターン | 説明 |
-|---------|------|
-| CODE_GEN | コード生成・実装支援 |
-| DEBUG | エラー解決・デバッグ |
-| ANALYSIS | データ分析・調査 |
-| SEARCH | 検索・情報抽出 |
-| REFACTOR | コード改善・リファクタ |
-| INTEGRATION | API連携・サービス統合 |
-
-## テスト済み環境
-
-- macOS / Python 3.9+
+- macOS / Python 3.12
 - Hermes `state.db` 実データ
-- 検証結果: 30セッション / 3932メッセージから29パターン検出、5スキル生成
-
-## 注意
-
-- 生成されたスキルは公開前に人間が内容を確認すること
-- 会話内容やツール出力がSKILL.mdに含まれる可能性があるため、秘密情報を含むDBで使う場合は出力確認が必須
-- デフォルトDBはHermesの現行スキーマ `~/.hermes/state.db` を想定
+- 30 sessions / 3932 messages
+- 29 patterns → 5 quality skills
+- テスト: 15 passed
 
 ## GitHub
 
-https://github.com/gagarot/core-hermes
+https://github.com/rezent011-sketch/core-hermes
 
 ## License
 
