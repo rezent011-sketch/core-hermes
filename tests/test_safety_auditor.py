@@ -2,7 +2,7 @@ from auto_skill_extractor.safety import SafetyAuditor
 
 
 def test_safety_auditor_detects_secret_email_and_long_id():
-    text = "token=abc1234567890 email=test@example.com user 8394209518"
+    text = "token=abc1234567890 email=test@example.com user 1234567890"
 
     result = SafetyAuditor().audit_text(text)
 

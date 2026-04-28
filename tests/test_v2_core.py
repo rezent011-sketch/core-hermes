@@ -13,8 +13,8 @@ def msg(content, role="user", id="1"):
 def test_smart_memory_extracts_durable_preferences_and_sanitizes():
     messages = [
         msg("こんにちは"),
-        msg("ユーザーは日本語で簡潔な報告を好む。APIキー sk-abcdefghijklmnopqrstuvwxyz は保存しない"),
-        msg("Mac mini環境は /Users/apple/projects を使う", id="3"),
+        msg("ユーザーは日本語で簡潔な報告を好む。api_key=dummy_secret_value は保存しない"),
+        msg("開発環境は ~/projects を使う", id="3"),
     ]
 
     candidates = SmartMemoryExtractor().extract(messages)
@@ -22,7 +22,7 @@ def test_smart_memory_extracts_durable_preferences_and_sanitizes():
     assert len(candidates) >= 2
     assert candidates[0].confidence >= candidates[-1].confidence
     assert any(c.memory_type == MemoryType.USER_PREFERENCE for c in candidates)
-    assert all("sk-abcdefghijklmnopqrstuvwxyz" not in c.content for c in candidates)
+    assert all("dummy_secret_value" not in c.content for c in candidates)
 
 
 def test_context_enhancer_ranks_relevant_memory():

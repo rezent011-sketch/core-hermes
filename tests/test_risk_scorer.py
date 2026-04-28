@@ -2,7 +2,7 @@ from auto_skill_extractor.risk import RiskScorer
 
 
 def test_risk_scorer_penalizes_secrets_and_raw_urls():
-    text = "api_key=abc123 https://example.com/path user 8394209518"
+    text = "api_key=abc123 https://example.com/path user 1234567890"
 
     result = RiskScorer().score_text(text)
 

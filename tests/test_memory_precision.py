@@ -25,11 +25,11 @@ def test_smart_memory_rejects_task_completion_logs_and_questions():
 def test_smart_memory_prefers_declarative_facts_not_assistant_promises():
     messages = [
         msg("次回から必ずこの形式でお届けします。何か画像を生成しますか？", id="1"),
-        msg("Mac miniのcore-hermes作業ディレクトリは /Users/apple/projects/core-hermes", id="2"),
+        msg("開発環境のcore-hermes作業ディレクトリは ~/projects/core-hermes", id="2"),
     ]
 
     candidates = SmartMemoryExtractor().extract(messages)
 
     assert len(candidates) == 1
     assert candidates[0].memory_type == MemoryType.ENVIRONMENT
-    assert "/Users/apple/projects/core-hermes" in candidates[0].content
+    assert "~/projects/core-hermes" in candidates[0].content
