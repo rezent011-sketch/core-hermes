@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+
+# Test/generated data
+test_state.db*
+test_skills/
+extracted_skills/
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
