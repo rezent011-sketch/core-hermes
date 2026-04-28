@@ -25,6 +25,8 @@ from .smart_memory import SmartMemoryExtractor
 from .context_enhancer import ContextEnhancer
 from .orchestrator import CoreHermesOrchestrator
 from .reporter import ReportWriter
+from .manifest import ManifestWriter
+from .safety import SafetyAuditor, SafetyAuditResult, SafetyFinding
 from .main import AutoSkillExtractor
 
 __all__ = [
@@ -52,7 +54,12 @@ __all__ = [
     "ContextEnhancer",
     "CoreHermesOrchestrator",
     "ReportWriter",
+    "ManifestWriter",
+    "SafetyAuditor",
+    "SafetyAuditResult",
+    "SafetyFinding",
     "AutoSkillExtractor",
 ]
+
 
 

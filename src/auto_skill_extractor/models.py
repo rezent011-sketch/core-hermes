@@ -131,6 +131,8 @@ class ExtractionConfig(BaseModel):
     context_query: Optional[str] = None
     orchestrate: bool = False
     report_path: Optional[Path] = None
+    manifest_path: Optional[Path] = None
+    strict: bool = False
 
 
 class ExtractionResult(BaseModel):
@@ -143,4 +145,5 @@ class ExtractionResult(BaseModel):
     memory_candidates: List[MemoryCandidate] = Field(default_factory=list)
     context_enhancement: Optional[ContextEnhancement] = None
     orchestrator_decision: Optional[OrchestratorDecision] = None
+    exit_code: Optional[int] = None
 

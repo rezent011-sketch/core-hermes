@@ -21,6 +21,8 @@ try:
     from .context_enhancer import ContextEnhancer
     from .orchestrator import CoreHermesOrchestrator
     from .reporter import ReportWriter
+    from .manifest import ManifestWriter
+    from .safety import SafetyAuditor
 except ImportError:
     from models import ExtractionConfig, ExtractionResult
     from session_reader import SessionReader
@@ -33,6 +35,8 @@ except ImportError:
     from context_enhancer import ContextEnhancer
     from orchestrator import CoreHermesOrchestrator
     from reporter import ReportWriter
+    from manifest import ManifestWriter
+    from safety import SafetyAuditor
 
 
 class AutoSkillExtractor:
@@ -49,6 +53,8 @@ class AutoSkillExtractor:
         self.context_enhancer = ContextEnhancer()
         self.orchestrator = CoreHermesOrchestrator()
         self.reporter = ReportWriter()
+        self.manifest_writer = ManifestWriter()
+        self.safety_auditor = SafetyAuditor()
     
     def run(self, since: Optional[datetime] = None) -> ExtractionResult:
         """抽出処理を実行"""
@@ -136,11 +142,23 @@ class AutoSkillExtractor:
             if result.orchestrator_decision:
                 print(f"   Orchestrator: {result.orchestrator_decision.action} - {result.orchestrator_decision.reason}")
 
+            if saved_files:
+                audit = self.safety_auditor.audit_files(Path(p) for p in saved_files)
+                if not audit.is_safe:
+                    result.errors.extend([f"safety audit failed: {f.kind}" for f in audit.findings[:10]])
+
+            if getattr(self.config, "manifest_path", None):
+                manifest_path = self.manifest_writer.write(result, self.config.manifest_path)
+                print(f"   Manifest written: {manifest_path}")
             if getattr(self.config, "report_path", None):
                 report_path = self.reporter.write(result, self.config.report_path)
                 print(f"   Report written: {report_path}")
 
-            if self.config.install and saved_files:
+            if self.config.strict and (result.errors or result.skills_extracted == 0):
+                print("Strict mode failed")
+                result.exit_code = 2
+
+            if self.config.install and saved_files and not result.errors:
                 installer = SkillInstaller()
                 installed = [installer.install_file(Path(p)) for p in saved_files]
                 saved_files.extend(str(p) for p in installed)
@@ -204,6 +222,8 @@ def main():
     parser.add_argument("--context-query", type=str, default=None, help="Build task-specific context from memory and generated skills")
     parser.add_argument("--orchestrate", action="store_true", help="Ask Core Hermes orchestrator for next safe action")
     parser.add_argument("--report", type=Path, default=None, help="Write a safe markdown summary report")
+    parser.add_argument("--manifest", type=Path, default=None, help="Write a machine-readable safe manifest")
+    parser.add_argument("--strict", action="store_true", help="Exit 2 if no skills or any validation/safety error")
     parser.add_argument("--install-from", type=Path, default=None, help="Install .md skills from a directory and exit")
     parser.add_argument("--hermes-home", type=Path, default=Path("~/.hermes"), help="Hermes home directory")
     
@@ -227,7 +247,9 @@ def main():
         memory_review=args.memory_review,
         context_query=args.context_query,
         orchestrate=args.orchestrate,
-        report_path=args.report
+        report_path=args.report,
+        manifest_path=args.manifest,
+        strict=args.strict
     )
     
     since = None
@@ -242,10 +264,13 @@ def main():
     print("\n" + "=" * 50)
     print(json.dumps(result.model_dump(), indent=2, default=str))
     
+    if getattr(result, "exit_code", None) is not None:
+        return result.exit_code
     return 0 if result.skills_extracted > 0 else 1
 
 
 if __name__ == "__main__":
     sys.exit(main())
+
 
 
