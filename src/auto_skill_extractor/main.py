@@ -23,6 +23,7 @@ try:
     from .reporter import ReportWriter
     from .manifest import ManifestWriter
     from .safety import SafetyAuditor
+    from .memory_review import MemoryReviewWriter
 except ImportError:
     from models import ExtractionConfig, ExtractionResult
     from session_reader import SessionReader
@@ -37,6 +38,7 @@ except ImportError:
     from reporter import ReportWriter
     from manifest import ManifestWriter
     from safety import SafetyAuditor
+    from memory_review import MemoryReviewWriter
 
 
 class AutoSkillExtractor:
@@ -47,6 +49,8 @@ class AutoSkillExtractor:
         self.reader = SessionReader(config.db_path)
         self.extractor = SkillExtractor(config.min_confidence)
         self.generator = SkillGenerator(config.output_dir)
+        if config.unsafe_no_sanitize:
+            self.generator.sanitizer.sanitize = lambda text: text or ""
         self.deduplicator = SkillDeduplicator()
         self.validator = SkillValidator()
         self.memory_extractor = SmartMemoryExtractor()
@@ -55,6 +59,7 @@ class AutoSkillExtractor:
         self.reporter = ReportWriter()
         self.manifest_writer = ManifestWriter()
         self.safety_auditor = SafetyAuditor()
+        self.memory_review_writer = MemoryReviewWriter()
     
     def run(self, since: Optional[datetime] = None) -> ExtractionResult:
         """抽出処理を実行"""
@@ -147,6 +152,9 @@ class AutoSkillExtractor:
                 if not audit.is_safe:
                     result.errors.extend([f"safety audit failed: {f.kind}" for f in audit.findings[:10]])
 
+            if getattr(self.config, "memory_review_path", None):
+                memory_review_path = self.memory_review_writer.write(memory_candidates, self.config.memory_review_path)
+                print(f"   Memory review written: {memory_review_path}")
             if getattr(self.config, "manifest_path", None):
                 manifest_path = self.manifest_writer.write(result, self.config.manifest_path)
                 print(f"   Manifest written: {manifest_path}")
@@ -224,6 +232,8 @@ def main():
     parser.add_argument("--report", type=Path, default=None, help="Write a safe markdown summary report")
     parser.add_argument("--manifest", type=Path, default=None, help="Write a machine-readable safe manifest")
     parser.add_argument("--strict", action="store_true", help="Exit 2 if no skills or any validation/safety error")
+    parser.add_argument("--memory-review-out", type=Path, default=None, help="Write memory candidates to a checkbox review markdown")
+    parser.add_argument("--unsafe-no-sanitize", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--install-from", type=Path, default=None, help="Install .md skills from a directory and exit")
     parser.add_argument("--hermes-home", type=Path, default=Path("~/.hermes"), help="Hermes home directory")
     
@@ -249,7 +259,9 @@ def main():
         orchestrate=args.orchestrate,
         report_path=args.report,
         manifest_path=args.manifest,
-        strict=args.strict
+        strict=args.strict,
+        memory_review_path=args.memory_review_out,
+        unsafe_no_sanitize=args.unsafe_no_sanitize
     )
     
     since = None
@@ -271,6 +283,7 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
 
 
 

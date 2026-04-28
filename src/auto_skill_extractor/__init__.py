@@ -27,6 +27,8 @@ from .orchestrator import CoreHermesOrchestrator
 from .reporter import ReportWriter
 from .manifest import ManifestWriter
 from .safety import SafetyAuditor, SafetyAuditResult, SafetyFinding
+from .memory_review import MemoryReviewWriter
+from .risk import RiskScorer, RiskScore
 from .main import AutoSkillExtractor
 
 __all__ = [
@@ -58,8 +60,12 @@ __all__ = [
     "SafetyAuditor",
     "SafetyAuditResult",
     "SafetyFinding",
+    "MemoryReviewWriter",
+    "RiskScorer",
+    "RiskScore",
     "AutoSkillExtractor",
 ]
+
 
 
 

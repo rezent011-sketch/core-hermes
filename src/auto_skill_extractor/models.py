@@ -133,6 +133,8 @@ class ExtractionConfig(BaseModel):
     report_path: Optional[Path] = None
     manifest_path: Optional[Path] = None
     strict: bool = False
+    memory_review_path: Optional[Path] = None
+    unsafe_no_sanitize: bool = False
 
 
 class ExtractionResult(BaseModel):
