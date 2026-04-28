@@ -137,6 +137,10 @@ class ExtractionConfig(BaseModel):
     unsafe_no_sanitize: bool = False
     judge: bool = False
     quality_threshold: float = 0.85
+    safe_auto: bool = False
+    auto_threshold: float = 0.93
+    review_threshold: float = 0.75
+    hermes_home: Optional[Path] = None
 
 
 class ExtractionResult(BaseModel):

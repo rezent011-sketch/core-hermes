@@ -26,6 +26,7 @@ try:
     from .memory_review import MemoryReviewWriter
     from .judge import HeuristicJudge
     from .quality_gate import QualityGate
+    from .safe_auto import SafeAutoRunner, SafeAutoPolicy
 except ImportError:
     from models import ExtractionConfig, ExtractionResult
     from session_reader import SessionReader
@@ -43,6 +44,7 @@ except ImportError:
     from memory_review import MemoryReviewWriter
     from judge import HeuristicJudge
     from quality_gate import QualityGate
+    from safe_auto import SafeAutoRunner, SafeAutoPolicy
 
 
 class AutoSkillExtractor:
@@ -186,6 +188,15 @@ class AutoSkillExtractor:
                 print("Strict mode failed")
                 result.exit_code = 2
 
+            if self.config.safe_auto:
+                safe_runner = SafeAutoRunner(
+                    output_dir=self.config.output_dir,
+                    hermes_home=getattr(self.config, "hermes_home", Path("~/.hermes")),
+                    policy=SafeAutoPolicy(self.config.auto_threshold, self.config.review_threshold),
+                )
+                safe_decisions = safe_runner.run(unique_skills, result.judge_score or 0.0)
+                print(f"   Safe-auto: {sum(d.action == 'auto_install' for d in safe_decisions)} auto, {sum(d.action == 'review' for d in safe_decisions)} review, {sum(d.action == 'reject' for d in safe_decisions)} reject")
+
             if self.config.install and saved_files and not result.errors:
                 installer = SkillInstaller()
                 installed = [installer.install_file(Path(p)) for p in saved_files]
@@ -256,6 +267,9 @@ def main():
     parser.add_argument("--unsafe-no-sanitize", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--judge", action="store_true", help="Run heuristic judge compatible with future LLM judge")
     parser.add_argument("--quality-threshold", type=float, default=0.85, help="Minimum judge score for strict quality gate")
+    parser.add_argument("--safe-auto", action="store_true", help="Safely auto-install only high-confidence zero-risk skills; quarantine the rest")
+    parser.add_argument("--auto-threshold", type=float, default=0.93, help="Safe-auto threshold for automatic install")
+    parser.add_argument("--review-threshold", type=float, default=0.75, help="Safe-auto threshold for review quarantine")
     parser.add_argument("--install-from", type=Path, default=None, help="Install .md skills from a directory and exit")
     parser.add_argument("--hermes-home", type=Path, default=Path("~/.hermes"), help="Hermes home directory")
     
@@ -285,13 +299,19 @@ def main():
         memory_review_path=args.memory_review_out,
         unsafe_no_sanitize=args.unsafe_no_sanitize,
         judge=args.judge,
-        quality_threshold=args.quality_threshold
+        quality_threshold=args.quality_threshold,
+        safe_auto=args.safe_auto,
+        auto_threshold=args.auto_threshold,
+        review_threshold=args.review_threshold,
+        hermes_home=args.hermes_home
     )
     
     since = None
     if args.since:
         since = datetime.now() - timedelta(days=args.since)
     
+    if config.safe_auto:
+        config.judge = True
     extractor = AutoSkillExtractor(config)
     result = extractor.run(since)
     
@@ -307,6 +327,7 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
 
 
 

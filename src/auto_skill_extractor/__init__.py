@@ -31,6 +31,7 @@ from .memory_review import MemoryReviewWriter
 from .risk import RiskScorer, RiskScore
 from .judge import HeuristicJudge, JudgeDecision
 from .quality_gate import QualityGate, QualityGateResult
+from .safe_auto import SafeAutoPolicy, SafeAutoDecision, SafeAutoRunner
 from .main import AutoSkillExtractor
 
 __all__ = [
@@ -69,8 +70,12 @@ __all__ = [
     "JudgeDecision",
     "QualityGate",
     "QualityGateResult",
+    "SafeAutoPolicy",
+    "SafeAutoDecision",
+    "SafeAutoRunner",
     "AutoSkillExtractor",
 ]
+
 
 
 
