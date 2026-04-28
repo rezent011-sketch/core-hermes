@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package and test tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pytest
+
+      - name: Local CI
+        run: ./scripts/ci.sh
+
+      - name: Demo dry-run safety check
+        run: |
+          core-hermes-extract \
+            --db examples/demo_state.db \
+            --dry-run \
+            --strict
+
+      - name: Demo report and manifest check
+        run: |
+          tmpdir="$(mktemp -d)"
+          core-hermes-extract \
+            --db examples/demo_state.db \
+            --output "$tmpdir/demo_output" \
+            --memory-review \
+            --memory-review-out "$tmpdir/demo_memory_review.md" \
+            --judge \
+            --strict \
+            --report "$tmpdir/demo_report.md" \
+            --manifest "$tmpdir/demo_manifest.json"
+          test -s "$tmpdir/demo_report.md"
+          test -s "$tmpdir/demo_manifest.json"
+          test -s "$tmpdir/demo_memory_review.md"

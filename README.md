@@ -6,15 +6,19 @@ Core Hermes reads a Hermes Agent `~/.hermes/state.db` and generates reviewable `
 
 ## Critical Privacy Warning
 
+This is a **developer technical preview**, not a consumer-safe one-click tool.
+
 This tool analyzes local conversation history. A Hermes `state.db` may contain:
 
 - API keys, tokens, credentials, command output
 - Telegram IDs, emails, URLs, personal data
 - private project details and customer data
 
-**Do not upload your `state.db`. Do not publish generated outputs without manual review.**
+**Never upload your real `state.db`. Never commit it to git. Never publish generated outputs from real history without manual review.**
 
-The tool includes sanitization, safety audit, risk scoring, strict mode, and safe-auto quarantine, but no automated scanner is perfect. Treat all generated files as sensitive until reviewed.
+The tool includes sanitization, safety audit, risk scoring, strict mode, and safe-auto quarantine, but no automated scanner is perfect. Treat all generated files as sensitive until reviewed. If you are unsure, run only the synthetic demo first.
+
+Public sharing rule: share the repository and demo outputs only. Do not share private databases, reports, manifests, extracted skills, or memory review files created from real user history.
 
 ## Safe First Run
 
@@ -125,9 +129,9 @@ core-hermes-extract \
 
 ## Local CI / Test Command
 
-GitHub Actions workflow is not committed yet because the current GitHub token lacks `workflow` scope.
+GitHub Actions CI template is included under `.github-disabled/workflows/ci.yml` and runs tests on Python 3.10, 3.11, and 3.12. Move it to `.github/workflows/ci.yml` with a GitHub token that has `workflow` scope.
 
-Use the local CI script instead:
+Run the same local checks before publishing:
 
 ```bash
 ./scripts/ci.sh
@@ -136,12 +140,21 @@ Use the local CI script instead:
 Expected currently:
 
 ```text
-41 passed
+47 passed
+local CI passed
 ```
+
+If GitHub rejects workflow updates, use a GitHub token with `workflow` scope.
+
+## Release Checklist
+
+Before announcing a release, follow `RELEASE_CHECKLIST.md`.
 
 ## Current Status
 
 `v0.1.0-preview`
+
+Package metadata uses PEP 440-compatible `0.1.0`; the public release tag and status are `v0.1.0-preview`.
 
 - Intended audience: developers and Hermes Agent power users
 - Status: technical preview

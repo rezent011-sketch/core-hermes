@@ -8,15 +8,34 @@ build/
 dist/
 .pytest_cache/
 
+# Secrets / local env
+.env
+*.env
+.env.*
+!.env.example
+
+# Private Hermes data and local databases
+state.db
+state.db-*
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+!examples/demo_state.db
+
 # Test/generated data
 test_state.db*
 test_skills/
 test_skills_*/
 extracted_skills/
-!examples/demo_output/
-!examples/demo_output/**
+demo_output/
+core-hermes-report.md
+core-hermes-manifest.json
+memory_review.md
 core_context.json
 memory_candidates.json
+!examples/demo_output/
+!examples/demo_output/**
 
 # OS/editor
 .DS_Store
