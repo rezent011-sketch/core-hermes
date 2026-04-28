@@ -20,6 +20,7 @@ try:
     from .smart_memory import SmartMemoryExtractor
     from .context_enhancer import ContextEnhancer
     from .orchestrator import CoreHermesOrchestrator
+    from .reporter import ReportWriter
 except ImportError:
     from models import ExtractionConfig, ExtractionResult
     from session_reader import SessionReader
@@ -31,6 +32,7 @@ except ImportError:
     from smart_memory import SmartMemoryExtractor
     from context_enhancer import ContextEnhancer
     from orchestrator import CoreHermesOrchestrator
+    from reporter import ReportWriter
 
 
 class AutoSkillExtractor:
@@ -46,6 +48,7 @@ class AutoSkillExtractor:
         self.memory_extractor = SmartMemoryExtractor()
         self.context_enhancer = ContextEnhancer()
         self.orchestrator = CoreHermesOrchestrator()
+        self.reporter = ReportWriter()
     
     def run(self, since: Optional[datetime] = None) -> ExtractionResult:
         """抽出処理を実行"""
@@ -133,6 +136,10 @@ class AutoSkillExtractor:
             if result.orchestrator_decision:
                 print(f"   Orchestrator: {result.orchestrator_decision.action} - {result.orchestrator_decision.reason}")
 
+            if getattr(self.config, "report_path", None):
+                report_path = self.reporter.write(result, self.config.report_path)
+                print(f"   Report written: {report_path}")
+
             if self.config.install and saved_files:
                 installer = SkillInstaller()
                 installed = [installer.install_file(Path(p)) for p in saved_files]
@@ -196,6 +203,7 @@ def main():
     parser.add_argument("--memory-review", action="store_true", help="Generate smart-memory candidates for manual review")
     parser.add_argument("--context-query", type=str, default=None, help="Build task-specific context from memory and generated skills")
     parser.add_argument("--orchestrate", action="store_true", help="Ask Core Hermes orchestrator for next safe action")
+    parser.add_argument("--report", type=Path, default=None, help="Write a safe markdown summary report")
     parser.add_argument("--install-from", type=Path, default=None, help="Install .md skills from a directory and exit")
     parser.add_argument("--hermes-home", type=Path, default=Path("~/.hermes"), help="Hermes home directory")
     
@@ -218,7 +226,8 @@ def main():
         install=args.install,
         memory_review=args.memory_review,
         context_query=args.context_query,
-        orchestrate=args.orchestrate
+        orchestrate=args.orchestrate,
+        report_path=args.report
     )
     
     since = None
@@ -238,4 +247,5 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
 

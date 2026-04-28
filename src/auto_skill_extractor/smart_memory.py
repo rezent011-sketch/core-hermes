@@ -14,13 +14,18 @@ class SmartMemoryExtractor:
     """ユーザー設定・環境事実・プロジェクト事実・ワークフローを抽出"""
 
     RULES = [
-        (MemoryType.USER_PREFERENCE, re.compile(r"(?:好む|嫌い|優先|必ず|しないで|してほしい|敬語不要|日本語|コスト|簡潔)"), 0.78),
+        (MemoryType.USER_PREFERENCE, re.compile(r"(?:好む|嫌い|優先|必ず|しないで|せず|してほしい|ほしい|敬語不要|日本語|コスト|簡潔)"), 0.78),
         (MemoryType.ENVIRONMENT, re.compile(r"(?:Mac mini|VPS|Tailscale|/Users/|~/|ポート|環境|インストール済み|設定ファイル)"), 0.72),
         (MemoryType.PROJECT_FACT, re.compile(r"(?:プロジェクト|リポジトリ|GitHub|ブランチ|README|スキルエンジン|core-hermes)"), 0.70),
         (MemoryType.WORKFLOW, re.compile(r"(?:手順|方法|次回|コマンド|実行|修復|回避|ワークフロー|運用)"), 0.68),
     ]
 
     NOISE = re.compile(r"^(はい|お願いします|ありがとう|こんにちは|了解|ok|OK|done)$")
+    QUESTION_MARKERS = re.compile(r"(?:ですか|ますか|でしょうか|\?|？)")
+    TASK_LOG_MARKERS = re.compile(r"(?:タスク完了|完了しました|作成しました|実施内容|結果報告|確認済み|検証完了)")
+    ASSISTANT_PROMISE_MARKERS = re.compile(r"(?:次回から必ず|お届けします|お手伝いできます|試してみますか|何か.*ありますか)")
+    TRANSIENT_MARKERS = re.compile(r"(?:こんにちは|すみません|申し訳|現在は使えません|リリース|ポスト|エラー内容|原因：|確認できました|完了|成功|今回の成果|説明します|はい、その通り|分析|解決策|選択肢|メリット|デメリット)")
+    DECLARATIVE_MARKERS = re.compile(r"(?:ユーザーは|環境は|作業ディレクトリは|設定ファイルは|実行コマンドは|リポジトリは|プロジェクトは|必須|必要|使う|好む|嫌う|ワークフロー|方針)")
 
     def __init__(self, sanitizer: ContentSanitizer | None = None, max_candidates: int = 20):
         self.sanitizer = sanitizer or ContentSanitizer()
@@ -34,7 +39,7 @@ class SmartMemoryExtractor:
             if msg.role not in {"user", "assistant"}:
                 continue
             text = self._normalize(msg.content)
-            if not self._is_candidate_text(text):
+            if not self._is_candidate_text(text, msg.role):
                 continue
 
             for memory_type, pattern, base_confidence in self.RULES:
@@ -63,10 +68,26 @@ class SmartMemoryExtractor:
         text = re.sub(r"\s+", " ", text).strip()
         return text
 
-    def _is_candidate_text(self, text: str) -> bool:
+    def _is_candidate_text(self, text: str, role: str = "assistant") -> bool:
         if len(text) < 12 or self.NOISE.match(text):
             return False
-        if len(text) > 1500:
+        if len(text) > 900:
+            return False
+        if role == "user":
+            return bool(self.DECLARATIVE_MARKERS.search(text)) and not self.QUESTION_MARKERS.search(text) and not self.TRANSIENT_MARKERS.search(text)
+        if self.QUESTION_MARKERS.search(text) and not self.DECLARATIVE_MARKERS.search(text):
+            return False
+        if self.TASK_LOG_MARKERS.search(text):
+            return False
+        if self.ASSISTANT_PROMISE_MARKERS.search(text) and not self.DECLARATIVE_MARKERS.search(text):
+            return False
+        if self.TRANSIENT_MARKERS.search(text):
+            return False
+        if any(marker in text for marker in ["その通り", "現在、私は", "結論：", "制約：", "確認してみます", "できますか", "始めるか"]):
+            return False
+        if "[CODE]" in text and not any(marker in text for marker in ["ユーザーは", "環境は", "作業ディレクトリは", "設定ファイルは", "リポジトリは"]):
+            return False
+        if not self.DECLARATIVE_MARKERS.search(text):
             return False
         return True
 

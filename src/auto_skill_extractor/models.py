@@ -130,6 +130,7 @@ class ExtractionConfig(BaseModel):
     memory_review: bool = False
     context_query: Optional[str] = None
     orchestrate: bool = False
+    report_path: Optional[Path] = None
 
 
 class ExtractionResult(BaseModel):

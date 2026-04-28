@@ -24,6 +24,7 @@ from .installer import SkillInstaller
 from .smart_memory import SmartMemoryExtractor
 from .context_enhancer import ContextEnhancer
 from .orchestrator import CoreHermesOrchestrator
+from .reporter import ReportWriter
 from .main import AutoSkillExtractor
 
 __all__ = [
@@ -50,6 +51,8 @@ __all__ = [
     "SmartMemoryExtractor",
     "ContextEnhancer",
     "CoreHermesOrchestrator",
+    "ReportWriter",
     "AutoSkillExtractor",
 ]
+
 
