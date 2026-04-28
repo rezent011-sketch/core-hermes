@@ -1,0 +1,13 @@
+{
+  "context_enhancement": false,
+  "errors": 0,
+  "file_count": 2,
+  "generated_at": "2026-04-28T14:55:43.004036+00:00",
+  "judge_score": 0.879,
+  "memory_candidates": 3,
+  "orchestrator_action": null,
+  "patterns_found": 2,
+  "quality_gate_passed": true,
+  "skills_extracted": 2,
+  "total_messages": 11
+}

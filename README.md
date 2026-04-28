@@ -1,80 +1,154 @@
-# Core Hermes - Auto Skill Extractor
+# Core Hermes Auto Skill Extractor
 
-Hermes Agentの `~/.hermes/state.db` を分析し、過去会話から再利用可能な `SKILL.md` 候補・メモリ候補・次回文脈を生成するCore Hermes実験実装。
+**Technical Preview for Hermes Agent users.**
 
-## 機能
+Core Hermes reads a Hermes Agent `~/.hermes/state.db` and generates reviewable `SKILL.md` candidates, memory candidates, reports, and safe-auto decisions.
 
-- **auto-skill-extractor**: コード生成、デバッグ、分析、検索などの会話パターンを検出
-- **安全マスク**: APIキー、トークン、Telegram ID、メールなどを出力前にマスク
-- **品質管理**: スコアリング、重複統合、SKILL.md事前検証
-- **review/install CLI**: `--dry-run` / `--review` / `--install-from` / `--install`
-- **smart-memory**: 長期記憶に保存する価値がある候補をレビュー用に抽出
-- **context-enhancer**: タスクに関連するメモリ・スキルを短い文脈に圧縮
-- **orchestrator**: 次に取るべき安全なアクションを判断
+## Critical Privacy Warning
 
-## インストール
+This tool analyzes local conversation history. A Hermes `state.db` may contain:
+
+- API keys, tokens, credentials, command output
+- Telegram IDs, emails, URLs, personal data
+- private project details and customer data
+
+**Do not upload your `state.db`. Do not publish generated outputs without manual review.**
+
+The tool includes sanitization, safety audit, risk scoring, strict mode, and safe-auto quarantine, but no automated scanner is perfect. Treat all generated files as sensitive until reviewed.
+
+## Safe First Run
+
+Use dry-run first. This writes nothing.
 
 ```bash
 git clone https://github.com/rezent011-sketch/core-hermes.git
 cd core-hermes
 python3 -m venv .venv
 . .venv/bin/activate
-pip install -e .
+pip install -e . pytest
+
+core-hermes-extract --db ~/.hermes/state.db --dry-run --strict
 ```
 
-## 使用方法
+## Recommended Review Workflow
 
 ```bash
-# まずは解析だけ（ファイルを書かない）
-core-hermes-extract --db ~/.hermes/state.db --dry-run
-
-# レビュー用ディレクトリに出力
-core-hermes-extract --db ~/.hermes/state.db --output ./extracted_skills --review
-
-# smart-memory / context-enhancer / orchestrator も実行
 core-hermes-extract \
   --db ~/.hermes/state.db \
   --output ./extracted_skills \
+  --review \
   --memory-review \
-  --context-query "Hermes skills GitHub" \
-  --orchestrate
-
-# レビュー済みスキルをHermesへ導入
-core-hermes-extract --install-from ./extracted_skills/review --hermes-home ~/.hermes
+  --memory-review-out ./memory_review.md \
+  --judge \
+  --strict \
+  --report ./core-hermes-report.md \
+  --manifest ./core-hermes-manifest.json
 ```
 
-## 安全方針
+Review these before installing or sharing:
 
-- 生成物は必ず人間レビュー前提
-- `--install` / `--install-from` は既存ファイルをバックアップしてから導入
-- `test_state.db` や生成済みスキルはGit管理しない
-- 秘密情報はマスクするが、公開前の目視確認は必須
+- `./extracted_skills/review/*.md`
+- `./memory_review.md`
+- `./core-hermes-report.md`
+- `./core-hermes-manifest.json`
 
-## アーキテクチャ
+## Safe-Auto Mode
+
+Safe-auto does **not** blindly install everything.
+
+Rules:
+
+- high score + risk `0` + safety audit pass → auto install
+- medium score → `review/`
+- risk detected / low score → `rejected/`
+
+```bash
+core-hermes-extract \
+  --db ~/.hermes/state.db \
+  --output ./extracted_skills \
+  --safe-auto \
+  --auto-threshold 0.93 \
+  --review-threshold 0.75 \
+  --judge \
+  --strict \
+  --report ./core-hermes-report.md \
+  --manifest ./core-hermes-manifest.json
+```
+
+Start with `--dry-run` or review workflow before enabling safe-auto on real history.
+
+## Features
+
+- Hermes `state.db` reader
+- Auto skill extraction
+- `SKILL.md` generation
+- Secret/PII sanitizer
+- Quality scoring and duplicate merging
+- Safety audit and risk scoring
+- Heuristic judge layer compatible with future LLM judge
+- Quality gate and strict exit codes
+- Memory review file generation
+- Safe-auto operation mode
+- Manifest and Markdown report output
+
+## CLI Options
+
+Key options:
+
+- `--dry-run` analyze only, write nothing
+- `--review` write skills under `output/review`
+- `--memory-review` generate memory candidates
+- `--memory-review-out PATH` write checkbox review file
+- `--judge` run judge-backed quality evaluation
+- `--strict` fail with exit `2` on safety/quality failures
+- `--report PATH` write safe Markdown report
+- `--manifest PATH` write machine-readable safe manifest
+- `--safe-auto` enable safe auto-install/quarantine workflow
+- `--auto-threshold 0.93` threshold for automatic install
+- `--install-from DIR` install reviewed skills manually
+
+## Demo Without Private Data
+
+A synthetic demo database is included under `examples/demo_state.db`.
+
+```bash
+core-hermes-extract \
+  --db examples/demo_state.db \
+  --output ./demo_output \
+  --memory-review \
+  --memory-review-out ./demo_memory_review.md \
+  --judge \
+  --strict \
+  --report ./demo_report.md \
+  --manifest ./demo_manifest.json
+```
+
+## Local CI / Test Command
+
+GitHub Actions workflow is not committed yet because the current GitHub token lacks `workflow` scope.
+
+Use the local CI script instead:
+
+```bash
+./scripts/ci.sh
+```
+
+Expected currently:
 
 ```text
-auto_skill_extractor/
-├── session_reader.py      # Hermes state.db読み込み
-├── pattern_analyzer.py    # 会話パターン検出
-├── skill_extractor.py     # スキル候補生成
-├── skill_generator.py     # SKILL.md生成 + サニタイズ
-├── quality.py             # スコアリング・重複統合・検証
-├── installer.py           # Hermes skills安全導入
-├── smart_memory.py        # メモリ候補抽出
-├── context_enhancer.py    # 関連文脈生成
-├── orchestrator.py        # 次アクション判断
-└── main.py                # CLI
+41 passed
 ```
 
-## 検証済み
+## Current Status
 
-- macOS / Python 3.12
-- Hermes `state.db` 実データ
-- 30 sessions / 3932 messages
-- 29 patterns → 5 quality skills
-- テスト: 15 passed
+`v0.1.0-preview`
 
-## GitHub
+- Intended audience: developers and Hermes Agent power users
+- Status: technical preview
+- Safe default: review-first
+- General-user claim: **not yet**
+
+## Repository
 
 https://github.com/rezent011-sketch/core-hermes
 
