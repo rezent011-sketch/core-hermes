@@ -29,8 +29,10 @@ def test_cli_safe_auto_writes_manifest_and_review(tmp_path):
     )
 
     assert completed.returncode == 0
-    manifest = out / "safe-auto-manifest.json"
-    assert manifest.exists()
+    # タイムスタンプ付きマニフェストファイルを検索
+    manifests = list(out.glob("safe-auto-manifest-*.json"))
+    assert len(manifests) == 1
+    manifest = manifests[0]
     data = json.loads(manifest.read_text(encoding="utf-8"))
     assert data["review"] >= 1
     assert data["auto_install"] == 0

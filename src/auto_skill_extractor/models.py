@@ -141,6 +141,7 @@ class ExtractionConfig(BaseModel):
     auto_threshold: float = 0.93
     review_threshold: float = 0.75
     hermes_home: Optional[Path] = None
+    incremental: bool = False  # 増分モード：前回の抽出以降のみ処理
 
 
 class ExtractionResult(BaseModel):

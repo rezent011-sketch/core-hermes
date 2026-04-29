@@ -68,11 +68,11 @@ class SessionReader:
             self.connect()
         
         query = "SELECT * FROM messages WHERE session_id = ?"
-        params: tuple = (session_id,)
+        params: list = [session_id]
         
         if since:
             query += " AND timestamp > ?"
-            params = (session_id, since.timestamp())
+            params.append(since.timestamp())
         
         query += " ORDER BY timestamp ASC"
         
@@ -98,11 +98,11 @@ class SessionReader:
             self.connect()
         
         query = "SELECT * FROM messages"
-        params: List = []
+        params: list = []
         
         if since:
             query += " WHERE timestamp > ?"
-            params.append(since.isoformat())
+            params.append(since.timestamp())
         
         query += " ORDER BY timestamp ASC"
         

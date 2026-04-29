@@ -13,8 +13,8 @@ class PatternAnalyzer:
     PATTERNS = {
         SkillType.CODE_GEN: {
             "regex": [
-                r"```[\w]*\n.*?```",  # コードブロック
-                r"(?:書いて|作成して|生成して|実装して)",
+                r"```[a-zA-Z0-9]*\n[\s\S]{0,5000}?```",  # コードブロック（5000 文字制限）
+                r"(?:書いて | 作成して | 生成して | 実装して)",
                 r"(?:python|javascript|typescript|rust|go|bash|shell)",
             ],
             "threshold": 0.6,

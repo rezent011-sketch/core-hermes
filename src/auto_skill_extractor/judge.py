@@ -85,10 +85,12 @@ class HeuristicJudge:
         score = min(max(memory.confidence, 0.0), 1.0) * 0.55
         if len(text) >= 20:
             score += 0.2
-        if any(marker in text for marker in ["ユーザーは", "環境", "設定", "必要", "好む", "使う", "必須"]):
+        if any(marker in text for marker in ["ユーザーは", "環境", "設定", "必要", "好む", "使う", "必須", "prefer", "must", "should", "always"]):
             score += 0.2
         if len(text) > 700:
             score -= 0.15
-        if text in {"お願いします", "ありがとう", "こんにちは"}:
+        # ノイズ文言チェックを拡張
+        noise_phrases = {"お願いします", "ありがとう", "こんにちは", "了解", "done", "thanks", "please"}
+        if text in noise_phrases or text.lower() in noise_phrases:
             score = 0.0
         return round(max(0.0, min(score, 1.0)), 3)

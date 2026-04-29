@@ -60,7 +60,7 @@ class SkillExtractor:
             if not messages:
                 continue
                 
-            session_id = messages[0].session_id if messages else "unknown"
+            session_id = messages[0].session_id
             skill = self.extract_from_session(messages, session_id)
             
             if skill and skill.name not in seen_patterns:

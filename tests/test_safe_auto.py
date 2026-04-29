@@ -50,4 +50,6 @@ def test_safe_auto_runner_writes_review_or_install(tmp_path):
 
     assert decisions[0].action == "auto_install"
     assert list((tmp_path / "hermes" / "skills" / "core-hermes").rglob("SKILL.md"))
-    assert (tmp_path / "out" / "safe-auto-manifest.json").exists()
+    # タイムスタンプ付きマニフェストファイルを検索
+    manifests = list((tmp_path / "out").glob("safe-auto-manifest-*.json"))
+    assert len(manifests) == 1

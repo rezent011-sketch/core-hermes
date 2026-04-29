@@ -82,25 +82,38 @@ class AutoSkillExtractor:
             sessions = self.reader.get_recent_sessions(limit=100)
             print(f"📊 {len(sessions)} sessions found")
             
-            # 各セッションを処理
+            # 各セッションを処理（並列化）
             all_skills = []
             total_messages = 0
             all_messages = []
             
+            # セッションデータ事前読み込み
+            session_data = []
             for session in sessions:
                 session_id = session["session_id"]
                 messages = list(self.reader.get_messages_for_session(session_id, since))
-                
-                if not messages:
-                    continue
-                
-                total_messages += len(messages)
-                all_messages.extend(messages)
-                
-                # スキルを抽出
-                skill = self.extractor.extract_from_session(messages, session_id)
-                if skill:
-                    all_skills.append(skill)
+                if messages:
+                    session_data.append((messages, session_id))
+                    total_messages += len(messages)
+                    all_messages.extend(messages)
+            
+            print(f"   Processing {len(session_data)} sessions with {total_messages} messages...")
+            
+            # 並列抽出（CPU バウンドではないので ThreadPool で十分）
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+            
+            def extract_skill(args):
+                messages, session_id = args
+                return self.extractor.extract_from_session(messages, session_id)
+            
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                futures = {executor.submit(extract_skill, data): data for data in session_data}
+                for future in as_completed(futures):
+                    skill = future.result()
+                    if skill:
+                        all_skills.append(skill)
+            
+            print(f"   Extracted {len(all_skills)} raw skills")
             
             # 重複統合・品質検証
             unique_skills = self.deduplicator.deduplicate(all_skills)
@@ -206,6 +219,11 @@ class AutoSkillExtractor:
             print(f"\n✅ Extraction complete!")
             print(f"   {result.skills_extracted} skills saved to {target_output if not self.config.dry_run else 'dry-run'}")
             
+            # 増分モード：最終実行時刻を記録
+            if self.config.incremental and not self.config.dry_run:
+                marker = self.config.output_dir / ".last_run"
+                marker.write_text(str(datetime.now().timestamp()))
+            
             return result
     
     def _deduplicate_skills(self, skills: list) -> list:
@@ -271,7 +289,8 @@ def main():
     parser.add_argument("--auto-threshold", type=float, default=0.93, help="Safe-auto threshold for automatic install")
     parser.add_argument("--review-threshold", type=float, default=0.75, help="Safe-auto threshold for review quarantine")
     parser.add_argument("--install-from", type=Path, default=None, help="Install .md skills from a directory and exit")
-    parser.add_argument("--hermes-home", type=Path, default=Path("~/.hermes"), help="Hermes home directory")
+    parser.add_argument("--hermes-home", type=Path, default=Path.home() / ".hermes", help="Hermes home directory")
+    parser.add_argument("--incremental", action="store_true", help="Incremental mode: only process sessions since last extraction")
     
     args = parser.parse_args()
 
@@ -303,12 +322,23 @@ def main():
         safe_auto=args.safe_auto,
         auto_threshold=args.auto_threshold,
         review_threshold=args.review_threshold,
-        hermes_home=args.hermes_home
+        hermes_home=args.hermes_home,
+        incremental=args.incremental
     )
     
     since = None
     if args.since:
         since = datetime.now() - timedelta(days=args.since)
+    
+    # 増分モード：前回の抽出以降のみ処理
+    if config.incremental:
+        last_run_marker = args.output_dir / ".last_run"
+        if last_run_marker.exists():
+            last_run = float(last_run_marker.read_text().strip())
+            since = datetime.fromtimestamp(last_run)
+            print(f"   Incremental mode: processing sessions since {since}")
+        else:
+            print("   Incremental mode: no previous run found, processing all sessions")
     
     if config.safe_auto:
         config.judge = True

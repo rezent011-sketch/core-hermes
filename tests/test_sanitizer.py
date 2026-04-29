@@ -10,7 +10,7 @@ def test_masks_api_keys_and_tokens():
 
 
 def test_masks_email_and_telegram_user_id():
-    text = "contact me test@example.com telegram user 1234567890"
+    text = "contact me test@example.com telegram user_id=1234567890"
     sanitized = ContentSanitizer().sanitize(text)
     assert "test@example.com" not in sanitized
     assert "1234567890" not in sanitized

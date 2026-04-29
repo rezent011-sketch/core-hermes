@@ -103,6 +103,9 @@ class SafeAutoRunner:
                 "review_threshold": self.policy.review_threshold,
             },
         }
-        path = self.output_dir / "safe-auto-manifest.json"
+        # タイムスタンプ付きファイル名で上書き防止
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        path = self.output_dir / f"safe-auto-manifest-{timestamp}.json"
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
         return path
